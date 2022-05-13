@@ -1,0 +1,41 @@
+shirking cat - 炝锅猫
+一个简单的纸牌游戏, 看谁先爆炸.
+游戏人数: 2-5
+Pet fun key bomb cat travel from abroad is a simple card card card card table, using a Russian roulette-like concept to play card games, players must take turns from the card stack, hidden in the card pile of several bomb kittens, the players who draw out directly. Of course, players are not just waiting for the cards to be blown up, there are various props in the stack to let the players save themselves! Or trap other players!
+玩家必须从卡片堆中轮流抽取，藏在卡片堆中的几只炸弹猫，玩家直接抽出。当然，玩家不仅仅是在等待卡片被炸毁，还有各种各样的道具可以让玩家自救！或者诱捕其他玩家！
+
+牌型: 预言1 透视2 索要3 交换4 洗牌5 跳过6 转向7 甩锅8 双甩9 抽底10 拆除11 炸弹12
+快捷键: 预言y 透视t 索要a 交换e 洗牌x 跳过j 转向d 甩锅s 双甩f 抽底b 拆除r 炸弹*
+牌数: 预言4 透视4 索要4 交换3 洗牌4 跳过8 转向5 甩锅5 双甩3 抽底3 拆除6 炸弹4 共53张
+
+-------------- Desk --------------
+stack: 5 cards, bomb: 2
+
+> 1: 3 cards  (Time Left: 10s)
+  2: 0 cards
+  3: 6 cards
+  4(You): ! ! @ E x j
+  5: DEAD
+----------------------------------
+
+1号 跳过
+2号 换牌 3号
+Help(t:摸牌, d:出牌 <牌型> <玩家编号>):
+d s 1
+4号 甩锅 1号
+杜昂! 炸弹爆炸了, 产品骂骂咧咧退出游戏.
+炸弹爆炸了, 前端: 喵喵喵~
+炸弹爆炸了, 运营: XXX(哔～～)
+炸弹爆炸了, 领导: 哈哈哈, 你们玩!
+游戏结束, 所有人扭打在一起! 乱成一锅粥..
+
+摸一张牌(m), 打出一张牌(参考快捷键), 聊天(c), 查看状态(l)
+
+a 1 索要1号
+e 1 交换1号
+s 1 甩锅1号
+
+r 拆除:放第一张
+r 2 放第二张
+r 0 放牌底
+r rand 放随机
