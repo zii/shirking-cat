@@ -89,10 +89,12 @@ func groupCards(cards []Card) string {
 		m[c]++
 	}
 	var out []string
-	for c, n := range m {
-		if n <= 1 {
+	for i := 1; i < 12; i++ {
+		c := Card(i)
+		n := m[c]
+		if n == 1 {
 			out = append(out, fmt.Sprintf("%s%s", c.String(), c.Shortcut()))
-		} else {
+		} else if n > 1 {
 			hans := []string{"两", "三", "四", "五", "六", "七", "八"}
 			out = append(out, fmt.Sprintf("%s张%s%s", hans[n-2], c.String(), c.Shortcut()))
 		}

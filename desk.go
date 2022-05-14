@@ -53,6 +53,7 @@ type Desk struct {
 	players  map[int]*Player
 	seats    [MaxSeats]*Player
 	stopch   chan struct{}
+	turn     int // 第几回合
 	bot_id   int
 	namebook []string
 
@@ -247,7 +248,7 @@ func (this *Desk) WaitPlayers() bool {
 				p.Println("已坐满, 请重试")
 			} else {
 				p.Println("成功加入牌桌, 请等待玩家. q:退出等待, l:查看当前状态")
-				this.Sendothers(user.Id, "来人了:", p.Name, p.bot)
+				this.Sendothers(user.Id, "来人了:", p.Name)
 			}
 		} else if player != nil && m.Msg == "q" {
 			this.RemovePlayer(user)
@@ -296,7 +297,7 @@ func (this *Desk) Play() {
 	}
 	for _, p := range this.seats {
 		if !p.dead {
-			this.Sendallf("恭喜🎉%s苟到最后! 一群人扭打在一起.\n", p.Name)
+			this.Sendallf("恭喜🎉%s坚持到了最后!\n", p.Name)
 			break
 		}
 	}
@@ -394,10 +395,18 @@ func (this *Desk) SendStatus(me *Player) {
 }
 
 func (this *Desk) OneTurn() {
+	this.turn++
 	this.expire_at = int(time.Now().Unix()) + TurnTimeout
 	expire_t := time.Now().Add(TurnTimeout * time.Second)
 
 	p := this.seats[this.state.current-1]
+	if p.bot {
+		go func() {
+			time.Sleep(time.Duration(rand.Intn(5)+1) * time.Second)
+			msg := this.DeltaGo(p)
+			this.Post(p.User, msg)
+		}()
+	}
 	switch this.state.action {
 	case ACT_GO:
 		p.Printf("现在由你出牌或摸牌(m)..\n")
@@ -522,18 +531,24 @@ func (this *Desk) cmdDiliver(player *Player, card Card) bool {
 	return true
 }
 
-func (this *Desk) Next() {
+func (this *Desk) getNext() int {
+	current := this.state.current
 	for i := 0; i < MaxSeats; i++ {
 		if this.state.direct == 1 {
-			this.state.current = (this.state.current)%MaxSeats + 1
+			current = (current)%MaxSeats + 1
 		} else {
-			this.state.current = (this.state.current+MaxSeats-2)%MaxSeats + 1
+			current = (current+MaxSeats-2)%MaxSeats + 1
 		}
-		p := this.seats[this.state.current-1]
+		p := this.seats[current-1]
 		if !p.dead {
 			break
 		}
 	}
+	return current
+}
+
+func (this *Desk) Next() {
+	this.state.current = this.getNext()
 }
 
 // 返回true表示本轮可以结束
@@ -698,6 +713,7 @@ func (this *Desk) findCard(card Card) int {
 }
 
 func (this *Desk) cmdShuffle(player *Player) {
+	player.RemoveCard(CARD_SHUFFLE)
 	rand.Shuffle(len(this.stack), func(i, j int) {
 		this.stack[i], this.stack[j] = this.stack[j], this.stack[i]
 	})

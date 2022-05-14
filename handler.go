@@ -24,7 +24,7 @@ func (h *GameHandler) Handle(raw net.Conn) {
 	}
 	log.Println("user login:", user.Id, user.Name)
 	if user.Desk == nil {
-		c.Println("登录成功! 快速开始请输入k: ")
+		c.Println("登录成功! 快速开始请输入a: ")
 	} else {
 		c.Println("登录成功! 重新加入牌桌: ", user.Desk.Id)
 	}
@@ -71,12 +71,12 @@ func (h *GameHandler) ValidUsername(s string) bool {
 }
 
 func (h *GameHandler) handleIdleMsg(user *User, msg string) {
-	if msg == "k" {
+	if msg == "a" {
 		d := NewDesk()
 		go h.processDesk(d)
 		d.Post(user, "join")
 	} else {
-		user.Println("无效的命令, 快速开始请输入k:")
+		user.Println("无效的命令, 快速开始请输入a:")
 	}
 }
 

@@ -7,6 +7,10 @@ type Player struct {
 	dead  bool   // 被炸死
 	off   bool   // 离开牌桌
 	no    int    // 座位号 1-5
+
+	ai struct {
+		safe int // 在第几轮感觉到安全
+	}
 }
 
 func NewPlayer(user *User, no int) *Player {
@@ -58,8 +62,12 @@ func (p *Player) Printf(format string, a ...any) {
 }
 
 func (p *Player) HasDisarm() bool {
+	return p.HasCard(CARD_DISARM)
+}
+
+func (p *Player) HasCard(card Card) bool {
 	for _, c := range p.cards {
-		if c == CARD_DISARM {
+		if c == card {
 			return true
 		}
 	}

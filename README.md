@@ -11,10 +11,12 @@ Pet fun key bomb cat travel from abroad is a simple card card card card table, u
 
 牌数: 预言4 透视4 索要4 交换3 洗牌4 跳过8 转向5 甩锅5 双甩3 抽底3 拆除6 炸弹4 共53张
 
-## 玩法
+## 试玩
 ```telnet
 telnet catlabs.cn 8888
 ```
 
-## 截图
-<img alt="Coverage" src="https://img.shields.io/codecov/c/github/molefrog/wouter.svg?color=black&labelColor=888" />
+## 原作 - 拆弹猫
+<a href="https://cat.wepie.com/">
+    <img alt="Coverage" src="https://github.com/zii/shirking-cat/raw/main/image/wepie.png" />
+</a>
