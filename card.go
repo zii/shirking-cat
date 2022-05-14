@@ -69,6 +69,32 @@ func (c Card) Shortcut() string {
 	return keys[c-1]
 }
 
+func FromKey(key string) Card {
+	switch key {
+	case KEY_PREDICT:
+		return CARD_PREDICT
+	case KEY_PERSP:
+		return CARD_PERSP
+	case KEY_ASK:
+		return CARD_ASK
+	case KEY_SWAP:
+		return CARD_SWAP
+	case KEY_SHUFFLE:
+		return CARD_SHUFFLE
+	case KEY_PASS:
+		return CARD_PASS
+	case KEY_TURN:
+		return CARD_TURN
+	case KEY_SHIRK:
+		return CARD_SHIRK
+	case KEY_SHIRK2:
+		return CARD_SHIRK2
+	case KEY_BOTTOM:
+		return CARD_BOTTOM
+	}
+	return 0
+}
+
 func joinCards(cards []Card) string {
 	if len(cards) == 0 {
 		return "[]"

@@ -5,9 +5,11 @@ import (
 	"log"
 	"net"
 	"regexp"
+	"sync"
 )
 
 type GameHandler struct {
+	desks sync.Map
 }
 
 func NewGameHandler() *GameHandler {
@@ -70,10 +72,27 @@ func (h *GameHandler) ValidUsername(s string) bool {
 	return r.MatchString(s)
 }
 
+func (h *GameHandler) findDesk() *Desk {
+	var out *Desk
+	h.desks.Range(func(key, value any) bool {
+		d := value.(*Desk)
+		if len(d.players) < MaxSeats {
+			out = d
+			return false
+		}
+		return true
+	})
+	return out
+}
+
 func (h *GameHandler) handleIdleMsg(user *User, msg string) {
 	if msg == "a" {
-		d := NewDesk()
-		go h.processDesk(d)
+		d := h.findDesk()
+		if d == nil {
+			d = NewDesk()
+			h.desks.Store(d.Id, d)
+			go h.processDesk(d)
+		}
 		d.Post(user, "join")
 	} else {
 		user.Println("无效的命令, 快速开始请输入a:")
@@ -81,14 +100,16 @@ func (h *GameHandler) handleIdleMsg(user *User, msg string) {
 }
 
 func (h *GameHandler) processDesk(d *Desk) {
+	defer func() {
+		d.Stop()
+		h.desks.Delete(d.Id)
+	}()
 	go d.AddBots()
 	ok := d.WaitPlayers()
 	if !ok {
 		d.Sendall("等待超时, 牌桌已解散")
-		d.Stop()
 		return
 	}
 	d.Play()
-	d.Sendall("游戏结束, 按k继续匹配玩家")
-	d.Stop()
+	d.Sendall("游戏结束, 按a继续匹配玩家")
 }

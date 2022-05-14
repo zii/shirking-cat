@@ -11,7 +11,7 @@ import (
 )
 
 const MaxSeats = 5
-const TurnTimeout = 10 // 回合超时时间
+const TurnTimeout = 30 // 回合超时时间
 
 // 行动模式
 const (
@@ -223,17 +223,17 @@ func (this *Desk) AddBots() {
 		for _, p := range this.seats {
 			if p == nil {
 				this.AddBot()
-				//break
+				break
 			}
 		}
-		time.Sleep(time.Duration(rand.Intn(5)+1) * time.Second)
+		time.Sleep(time.Duration(rand.Intn(5)+10) * time.Second)
 	}
 }
 
 // wait for filling all the seats
 func (this *Desk) WaitPlayers() bool {
 	for len(this.players) < MaxSeats {
-		m := this.Read(10 * time.Second)
+		m := this.Read(60 * time.Second)
 		if m == nil {
 			return false
 		}
@@ -632,8 +632,8 @@ func (this *Desk) handleMail(m *Mail) bool {
 		this.cmdDisarm(p, index)
 		return true
 	} else if this.state.action == ACT_DILIVER {
-		c, _ := strconv.Atoi(cmd)
-		ok := this.cmdDiliver(p, Card(c))
+		c := FromKey(cmd)
+		ok := this.cmdDiliver(p, c)
 		return ok
 	}
 	return false
@@ -644,7 +644,7 @@ func (this *Desk) cmdPredict(player *Player) {
 	player.RemoveCard(CARD_PREDICT)
 	n := this.findCard(CARD_BOMB) + 1
 	player.Printf("预言: 炸弹在第%d张\n", n)
-	this.Sendothersf(player.Id, "%s使用了预言", player.Name)
+	this.Sendothersf(player.Id, "%s使用了预言\n", player.Name)
 }
 
 func (this *Desk) cmdPersp(player *Player) {
@@ -657,7 +657,7 @@ func (this *Desk) cmdPersp(player *Player) {
 	}
 	tip := joinCards(cards)
 	player.Printf("透视: %s\n", tip)
-	this.Sendothersf(player.Id, "%s使用了透视", player.Name)
+	this.Sendothersf(player.Id, "%s使用了透视\n", player.Name)
 }
 
 func (this *Desk) cmdAsk(player *Player, no int) bool {
@@ -724,7 +724,7 @@ func (this *Desk) cmdPass(player *Player) {
 	player.RemoveCard(CARD_PASS)
 	this.state.combo--
 	if this.state.combo < 1 {
-		this.state.combo = 1
+		this.state.combo = 0
 		this.state.action = ACT_GO
 		this.state.from_id = 0
 		this.Next()
