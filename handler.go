@@ -26,7 +26,7 @@ func (h *GameHandler) Handle(raw net.Conn) {
 	}
 	log.Println("user login:", user.Id, user.Name)
 	if user.Desk == nil {
-		c.Println("登录成功! 快速开始请输入a: ")
+		c.Println("登录成功! 快速开始a, 退出q")
 	} else {
 		c.Println("登录成功! 重新加入牌桌: ", user.Desk.Id)
 	}
@@ -94,8 +94,10 @@ func (h *GameHandler) handleIdleMsg(user *User, msg string) {
 			go h.processDesk(d)
 		}
 		d.Post(user, "join")
+	} else if msg == "q" {
+		user.Close()
 	} else {
-		user.Println("无效的命令, 快速开始请输入a:")
+		user.Println("无效的命令, 快速开始a, 退出q")
 	}
 }
 

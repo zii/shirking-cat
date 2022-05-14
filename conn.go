@@ -31,7 +31,7 @@ func (c *Conn) Close() error {
 		return nil
 	}
 	c.Closed = true
-	return c.Close()
+	return c.Conn.Close()
 }
 
 func (c *Conn) ReadLine() (string, error) {
