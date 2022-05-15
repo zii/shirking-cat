@@ -13,7 +13,7 @@ Pet fun key bomb cat travel from abroad is a simple card card card card table, u
 
 ## 试玩
 ```telnet
-telnet catlabs.cn 8888
+telnet catlabs.cn 5555
 ```
 
 ## 原作 - 拆弹猫
