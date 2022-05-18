@@ -16,6 +16,9 @@ Pet fun key bomb cat travel from abroad is a simple card card card card table, u
 telnet catlabs.cn 5555
 ```
 
+## 截图
+<img alt="Coverage" src="https://github.com/zii/shirking-cat/raw/main/image/term.png" />
+
 ## 原作 - 拆弹猫
 <a href="https://cat.wepie.com/">
     <img alt="Coverage" src="https://github.com/zii/shirking-cat/raw/main/image/wepie.png" />
