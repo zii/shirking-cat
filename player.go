@@ -37,7 +37,11 @@ func (p *Player) Println(a ...any) {
 		return
 	}
 	if p.Desk != nil {
-		p.User.Printf("[desk%d] ", p.Desk.Id)
+		if p.Desk.turn > 0 {
+			p.User.Printf("<%d> ", p.Desk.state.current)
+		} else {
+			p.User.Printf("[desk%d] ", p.Desk.Id)
+		}
 	}
 	p.User.Println(a...)
 }
@@ -56,7 +60,11 @@ func (p *Player) Printf(format string, a ...any) {
 		return
 	}
 	if p.Desk != nil {
-		p.User.Printf("[desk%d] ", p.Desk.Id)
+		if p.Desk.turn > 0 {
+			p.User.Printf("<%d> ", p.Desk.state.current)
+		} else {
+			p.User.Printf("[desk%d] ", p.Desk.Id)
+		}
 	}
 	p.User.Printf(format, a...)
 }

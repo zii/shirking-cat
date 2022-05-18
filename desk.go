@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -33,14 +31,7 @@ type Mail struct {
 }
 
 func (m *Mail) Command() (string, Argument) {
-	a := strings.SplitN(m.Msg, " ", 2)
-	if len(a) <= 0 {
-		return "", ""
-	}
-	if len(a) == 1 {
-		return a[0], ""
-	}
-	return a[0], Argument(a[1])
+	return ParseMsg(m.Msg)
 }
 
 // 牌型: 预言1 透视2 索要3 交换4 洗牌5 跳过6 转向7 甩锅8 双甩9 抽底10 拆除11 炸弹12
@@ -205,8 +196,20 @@ func (this *Desk) RemovePlayer(user *User) bool {
 	if user.Desk != nil && user.Desk.Id == this.Id {
 		user.Desk = nil
 	}
-	//delete(this.players, user.Id)
-	//this.seats[p.no-1] = nil
+	delete(this.players, user.Id)
+	this.seats[p.no-1] = nil
+	return true
+}
+
+func (this *Desk) PlayerOff(user *User) bool {
+	p, ok := this.players[user.Id]
+	if !ok {
+		return false
+	}
+	p.off = true
+	if user.Desk != nil && user.Desk.Id == this.Id {
+		user.Desk = nil
+	}
 	return true
 }
 
@@ -247,16 +250,19 @@ func (this *Desk) WaitPlayers() bool {
 			if !ok {
 				p.Println("已坐满, 请重试")
 			} else {
-				p.Println("成功加入牌桌, 请等待玩家. q:退出等待, l:查看当前状态")
+				p.Println("请等待玩家. q:退出等待, l:查看状态, f:添加机器人")
 				this.Sendothers(user.Id, "来人了:", p.Name)
 			}
 		} else if player != nil && m.Msg == "q" {
-			this.RemovePlayer(user)
 			player.Println("您已退出牌桌:", this.Id)
+			this.Sendothersf(player.Id, "%s走了\n", player.Name)
+			this.RemovePlayer(user)
 		} else if player != nil && m.Msg == "l" {
 			player.Printf("牌桌ID: %d, 人数: %d\n", this.Id, len(this.players))
+		} else if player != nil && m.Msg == "f" {
+			this.AddBot()
 		} else if player != nil {
-			player.Println("无效的命令. q:退出等待, l:查看当前状态")
+			player.Println("无效的命令. q:退出等待, l:查看状态")
 		} else {
 			user.Println("?")
 		}
@@ -287,13 +293,17 @@ func (this *Desk) Deads() int {
 // 运行一局游戏
 func (this *Desk) Play() {
 	this.Sendall("游戏开始!")
-	this.Sendall("提示: 摸一张牌(m), 打出一张牌(参考帮助), 聊天(c <文字>), 查看状态(l), 帮助(?)")
+	this.Sendall("提示: 摸一张牌(m), 打出一张牌(参考帮助), 聊天(c 文字), 查看状态(l), 帮助(?)")
 	this.init()
 	for _, p := range this.seats {
 		this.SendStatus(p)
 	}
+	this.turn = 1
+	cur := this.seats[this.state.current-1]
+	this.Sendallf("由%s首次行动(尖括号数字表示下一轮由第几个玩家出牌)..\n", cur.Name)
 	for this.Alives() > 1 {
 		this.OneTurn()
+		this.turn++
 	}
 	for _, p := range this.seats {
 		if !p.dead {
@@ -366,9 +376,14 @@ func (this *Desk) SendStatus(me *Player) {
 	if me.bot {
 		return
 	}
+	var dir = "+"
+	if this.state.direct != 1 {
+		dir = "-"
+	}
 	s := fmt.Sprintf("")
-	s += "------------------------------ 当前状态 --------------------------\n"
-	s += fmt.Sprintf("  stack: %d cards, bomb: %d\n\n", len(this.stack), this.Bombs())
+	s += fmt.Sprintf("------------------------------ DESK %d --------------------------\n", this.Id)
+	s += fmt.Sprintf("  stack: %d cards, bomb: %d, direction:%s\n\n",
+		len(this.stack), this.Bombs(), dir)
 	for i, p := range this.seats {
 		var arrow = " "
 		var timetext string
@@ -390,37 +405,37 @@ func (this *Desk) SendStatus(me *Player) {
 
 		s += fmt.Sprintf("%s %d(%s):\t %s %s\n", arrow, i+1, name, card_text, timetext)
 	}
-	s += "-------------------------------------------------------------------"
+	s += "----------------------------------------------------------------"
 	me.User.Println(s)
 }
 
 func (this *Desk) OneTurn() {
-	this.turn++
 	this.expire_at = int(time.Now().Unix()) + TurnTimeout
 	expire_t := time.Now().Add(TurnTimeout * time.Second)
 
 	p := this.seats[this.state.current-1]
 	if p.bot {
 		go func() {
-			time.Sleep(time.Duration(rand.Intn(5)+1) * time.Second)
+			time.Sleep(time.Duration(rand.Intn(8)+5) * time.Second)
 			msg := this.DeltaGo(p)
 			this.Post(p.User, msg)
 		}()
 	}
 	switch this.state.action {
 	case ACT_GO:
-		p.Printf("现在由你出牌或摸牌(m)..\n")
-		this.Sendothersf(p.Id, "现在由%s出牌或摸牌..\n", p.Name)
+		p.Printf("现在由你出牌或摸牌(m), 当前手牌: %s\n", groupCards(p.cards))
+		//this.Sendothersf(p.Id, "现在由%s出牌或摸牌..\n", p.Name)
 	case ACT_DISARM:
-		p.Printf("现在由你拆除炸弹(输入数字, 放在第几张, 0牌底, r随机)..\n")
-		this.Sendothersf(p.Id, "现在等%s拆除炸弹..\n", p.Name)
+		//p.Printf("现在由你拆除炸弹(输入数字, 放在第几张, 0牌底, r随机)..\n")
+		//this.Sendothersf(p.Id, "现在等%s拆除炸弹..\n", p.Name)
 	case ACT_DILIVER:
 		var from_name = "?"
 		f := this.players[this.state.from_id]
 		if f != nil {
 			from_name = f.Name
 		}
-		this.Sendallf("现在等%s给%s一张牌(牌的快捷键)..\n", p.Name, from_name)
+		p.Printf("现在由你交给%s一张牌(牌的快捷键):\n", from_name)
+		//this.Sendallf("现在等%s给%s一张牌(牌的快捷键)..\n", p.Name, from_name)
 	default:
 		this.Sendallf("现在由%s行动..\n", p.Name)
 	}
@@ -470,8 +485,16 @@ func (this *Desk) cmdDraw(player *Player) {
 			this.state.action = ACT_GO
 			this.state.from_id = 0
 			this.Next()
-			player.Printf("你摸到炸弹, 没有拆除, 光荣牺牲! 得到第%d名.\n", this.Alives()+1)
-			this.Sendothersf(player.Id, "DUANG! 摸到炸弹, %s骂骂咧咧退出游戏.\n", player.Name)
+			player.Printf("你摸到炸弹, 眼前一黑, 光荣牺牲! 得到第%d名.\n", this.Alives()+1)
+			r := rand.Intn(3)
+			switch r {
+			case 0:
+				this.Sendothersf(player.Id, "DUANG! %s摸到炸弹, 骂骂咧咧退出游戏.\n", player.Name)
+			case 1:
+				this.Sendothersf(player.Id, "%s摸到一颗炸弹, 当场去世.\n", player.Name)
+			case 2:
+				this.Sendothersf(player.Id, "%s摸到一颗炸弹, 打出gg.\n", player.Name)
+			}
 		}
 	} else {
 		player.PutCard(c)
@@ -481,13 +504,21 @@ func (this *Desk) cmdDraw(player *Player) {
 		if this.state.combo > 0 {
 			player.Printf("你摸到一张%s, 再摸%d次\n", c, this.state.combo)
 		} else {
-			player.Printf("你摸到一张%s\n", c)
-		}
-
-		this.Sendothersf(player.Id, "%s摸了一张牌\n", player.Name)
-		if this.state.combo <= 0 {
 			this.state.combo = 0
 			this.Next()
+			player.Printf("你摸到一张%s\n", c)
+		}
+		switch rand.Intn(5) {
+		case 1:
+			this.Sendothersf(player.Id, "%s摸了一张牌, 表情耐人寻味.\n", player.Name)
+		case 2:
+			this.Sendothersf(player.Id, "%s摸了一张牌, 嘴角露出一丝微笑.\n", player.Name)
+		case 3:
+			this.Sendothersf(player.Id, "%s小心翼翼地摸了一张牌.\n", player.Name)
+		case 4:
+			this.Sendothersf(player.Id, "%s思索良久终于, 鼓起勇气摸了一张牌.\n", player.Name)
+		default:
+			this.Sendothersf(player.Id, "%s摸了一张牌\n", player.Name)
 		}
 	}
 }
@@ -499,8 +530,8 @@ func (this *Desk) cmdDisarm(player *Player, index int) {
 	this.state.combo = 0
 	this.state.action = ACT_GO
 	this.state.from_id = 0
-	this.Sendallf("%s拆除了炸弹.\n", player.Name)
 	this.Next()
+	this.Sendallf("%s拆除了炸弹.\n", player.Name)
 }
 
 // 交牌
@@ -553,7 +584,7 @@ func (this *Desk) Next() {
 
 // 返回true表示本轮可以结束
 func (this *Desk) handleMail(m *Mail) bool {
-	log.Println("recv mail:", m)
+	//log.Println("recv mail:", m)
 	if m.User == nil {
 		return false
 	}
@@ -573,7 +604,7 @@ func (this *Desk) handleMail(m *Mail) bool {
 		return false
 	} else if cmd == "q" {
 		this.Sendallf("%s离开了牌桌\n", p.Name)
-		this.RemovePlayer(p.User)
+		this.PlayerOff(p.User)
 		return false
 	}
 	if this.state.current != p.no {
@@ -656,7 +687,7 @@ func (this *Desk) cmdPersp(player *Player) {
 		cards = this.stack[:3]
 	}
 	tip := joinCards(cards)
-	player.Printf("透视: %s\n", tip)
+	player.Printf("透视: 下面三张牌是..%s\n", tip)
 	this.Sendothersf(player.Id, "%s使用了透视\n", player.Name)
 }
 
@@ -672,6 +703,10 @@ func (this *Desk) cmdAsk(player *Player, no int) bool {
 	peer := this.seats[no-1]
 	if peer.dead {
 		player.Println("错误: 对方已死")
+		return false
+	}
+	if len(peer.cards) == 0 {
+		player.Println("错误: 对方没牌了")
 		return false
 	}
 	player.RemoveCard(CARD_ASK)
@@ -803,7 +838,6 @@ func (this *Desk) cmdBottom(player *Player) {
 		}
 	} else {
 		player.PutCard(c)
-		player.Printf("你抽底得到一张%s\n", c)
 		this.state.combo--
 		if this.state.combo < 1 {
 			this.state.combo = 0
@@ -811,6 +845,7 @@ func (this *Desk) cmdBottom(player *Player) {
 			this.state.from_id = 0
 			this.Next()
 		}
+		player.Printf("你抽底得到一张%s\n", c)
 		this.Sendothersf(player.Id, "%s抽底\n", player.Name)
 	}
 }
@@ -819,6 +854,7 @@ func (this *Desk) helpInfo() string {
 	s := ""
 	s += `
 	摸一张牌(m), 聊天(c), 查看状态(l), 帮助(?), 离开(q)
+	尖括号表示下一轮由第几个玩家出牌
 
 	[出牌快捷键]
 	预言: y

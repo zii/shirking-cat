@@ -29,8 +29,12 @@ func (this *Desk) DeltaGo(bot *Player) string {
 	if this.state.action == ACT_GO {
 		ave := this.AverageCards()
 		cn := len(bot.cards)
+		// 随机索要
 		if bot.HasCard(CARD_ASK) && proba() < 20 {
-			return this.DeltaUse(bot, CARD_ASK)
+			out := this.DeltaUse(bot, CARD_ASK)
+			if out != "" {
+				return out
+			}
 		}
 		// 1. 牌不够
 		if cn < ave {
@@ -106,6 +110,9 @@ func (this *Desk) DeltaUse(bot *Player, card Card) string {
 		return KEY_PERSP
 	case CARD_ASK:
 		p := this.PoorPlayer(bot.Id)
+		if p == nil {
+			return ""
+		}
 		return fmt.Sprintf("%s %d", KEY_ASK, p.no)
 	case CARD_SWAP:
 		p := this.RichPlayer(bot.Id)
@@ -132,7 +139,7 @@ func (this *Desk) PoorPlayer(exclude int) *Player {
 	var min = 10
 	var minp *Player
 	for _, p := range this.seats {
-		if !p.dead && p.Id != exclude {
+		if !p.dead && p.Id != exclude && len(p.cards) > 0 {
 			if len(p.cards) < min {
 				min = len(p.cards)
 				minp = p

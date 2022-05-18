@@ -2,9 +2,11 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"regexp"
+	"strings"
 	"sync"
 )
 
@@ -26,7 +28,7 @@ func (h *GameHandler) Handle(raw net.Conn) {
 	}
 	log.Println("user login:", user.Id, user.Name)
 	if user.Desk == nil {
-		c.Println("登录成功! 快速开始a, 退出q")
+		c.Println("登录成功! 快速开始a, 查看l, 退出q")
 	} else {
 		c.Println("登录成功! 重新加入牌桌: ", user.Desk.Id)
 	}
@@ -85,8 +87,20 @@ func (h *GameHandler) findDesk() *Desk {
 	return out
 }
 
+func ParseMsg(msg string) (string, Argument) {
+	a := strings.SplitN(msg, " ", 2)
+	if len(a) <= 0 {
+		return "", ""
+	}
+	if len(a) == 1 {
+		return a[0], ""
+	}
+	return a[0], Argument(a[1])
+}
+
 func (h *GameHandler) handleIdleMsg(user *User, msg string) {
-	if msg == "a" {
+	cmd, arg := ParseMsg(msg)
+	if cmd == "a" {
 		d := h.findDesk()
 		if d == nil {
 			d = NewDesk()
@@ -94,11 +108,47 @@ func (h *GameHandler) handleIdleMsg(user *User, msg string) {
 			go h.processDesk(d)
 		}
 		d.Post(user, "join")
-	} else if msg == "q" {
+	} else if cmd == "l" {
+		buf := strings.Builder{}
+		buf.WriteString("加入游戏: j <牌桌ID>\n")
+		var n int
+		h.desks.Range(func(key, value any) bool {
+			d := value.(*Desk)
+			buf.WriteString(fmt.Sprintf("#%d: %d人\n", d.Id, len(d.players)))
+			n++
+			return true
+		})
+		if n == 0 {
+			user.Println("当前没有牌桌.")
+		} else {
+			user.Printf(buf.String())
+		}
+	} else if cmd == "j" {
+		id := arg.Int()
+		h.cmdJoin(user, id)
+	} else if cmd == "q" {
 		user.Close()
 	} else {
-		user.Println("无效的命令, 快速开始a, 退出q")
+		user.Println("无效的命令, 快速开始a, 查看l, 退出q")
 	}
+}
+
+func (h *GameHandler) cmdJoin(user *User, id int) {
+	if id == 0 {
+		user.Println("参数错误, 必须是数字")
+		return
+	}
+	v, ok := h.desks.Load(id)
+	if !ok {
+		user.Println("无此牌桌")
+		return
+	}
+	d := v.(*Desk)
+	if len(d.players) >= MaxSeats {
+		user.Println("牌桌已坐满.")
+		return
+	}
+	d.Post(user, "join")
 }
 
 func (h *GameHandler) processDesk(d *Desk) {
@@ -106,7 +156,7 @@ func (h *GameHandler) processDesk(d *Desk) {
 		d.Stop()
 		h.desks.Delete(d.Id)
 	}()
-	go d.AddBots()
+	//go d.AddBots()
 	ok := d.WaitPlayers()
 	if !ok {
 		d.Sendall("等待超时, 牌桌已解散")

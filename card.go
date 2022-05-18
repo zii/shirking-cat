@@ -34,7 +34,7 @@ const (
 	KEY_SHIRK   = "s" // 甩锅
 	KEY_SHIRK2  = "f" // 双甩
 	KEY_BOTTOM  = "b" // 抽底
-	KEY_DISARM  = ""  // 拆除
+	KEY_DISARM  = "r" // 拆除
 	KEY_BOMB    = ""  // 炸弹
 )
 
@@ -91,6 +91,8 @@ func FromKey(key string) Card {
 		return CARD_SHIRK2
 	case KEY_BOTTOM:
 		return CARD_BOTTOM
+	case KEY_DISARM:
+		return CARD_DISARM
 	}
 	return 0
 }
